@@ -1,18 +1,25 @@
 export default {
     openUrlBrowser: `
 const { invoke } = window.__TAURI__.core
- 
-if ('__TAURI__' in window) {
-    const hookClick = (e) => {
-        const origin = e.target.closest('a')
-        const isBaseTargetBlank = document.querySelector(
-            'head base[target="_blank"]'
-        )
-        console.log('origin', origin, isBaseTargetBlank)
-        invoke('open_url', { url: origin.href })
-    }
-    document.addEventListener('click', hookClick, { capture: true })
+const hookClick = (e) => {
+const origin = e.target.closest('a')
+const isBaseTargetBlank = document.querySelector(
+    'head base[target="_blank"]'
+)
+if (
+    (origin && origin.href && origin.target === '_blank') ||
+    (origin && origin.href && isBaseTargetBlank)
+) {
+    e.preventDefault()
+    invoke('open_url', { url: origin.href })
 }
+}
+
+window.open = function (url, target, features) {
+invoke('open_url', { url: url })
+}
+
+document.addEventListener('click', hookClick, { capture: true })
     `,
     openUrlCurrent: `
 const hookClick = (e) => {
@@ -79,13 +86,16 @@ const { invoke } = window.__TAURI__.core
 if ('__TAURI__' in window) {
     await invoke('download_file', {
         url: 'https://www.baidu.com/img/flexible/logo/pc/result.png',
-        savePath: 'test.png',
+        savePath: '',
         fileId: 'test',
     })
 }`,
     downProgress: `
+const { listen } = window.__TAURI__.event
+
+let downloadProgress = 0
 listen('download_progress', (event: any) => {
-    downloadProgress.value = Number(
+    downloadProgress = Number(
         ((event.payload.downloaded / event.payload.total) * 100).toFixed(2)
     )
 })
@@ -102,7 +112,12 @@ document.body.appendChild(modal)
     modifyEle: `
 document.querySelector("#juejin > div.container.index-container > div > header > div > a > img.logo-img").src = "https://pakeplus.com/app.svg"
     `,
-    disableRightClick: `
+    disRightClick: `
+document.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+});
+    `,
+    inputRightClick: `
 document.addEventListener('contextmenu', function(e) {
   const target = e.target;
   const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
@@ -111,5 +126,19 @@ document.addEventListener('contextmenu', function(e) {
     e.preventDefault();
   }
 });
-    `
+    `,
+    notification: `
+const { invoke } = window.__TAURI__.core
+
+if ('__TAURI__' in window) {
+    invoke('notification', { title: 'test', body: 'notification body' })
+}
+    `,
+    setTitle: `
+const { getCurrentWindow } = window.__TAURI__.window
+
+if ('__TAURI__' in window) {
+   await getCurrentWindow().setTitle('test')
+}
+    `,
 }

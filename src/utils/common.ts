@@ -8,6 +8,7 @@ import { join } from '@tauri-apps/api/path'
 import { ElMessage } from 'element-plus'
 import CryptoJS from 'crypto-js'
 import QRCode from 'qrcode'
+import Codes from '@/utils/codes'
 import { setTheme } from '@tauri-apps/api/app'
 
 // upstream repo info
@@ -22,18 +23,18 @@ export const devBranch = import.meta.env.VITE_DEV_BRANCH
 export const fileSizeLimit = import.meta.env.VITE_FILE_LIMIT_SIZE * 1024 * 1024
 export const fileLimitNumber = import.meta.env.VITE_FILE_LIMIT_NUMBER
 
-// pay info
-export const ppApisDomain = import.meta.env.VITE_PPAPI_DOMAIN
-export const basePayjsUrl = import.meta.env.VITE_PAYJS_DOMAIN
-export const payJsMchid = import.meta.env.VITE_PAYJS_MCHID
-export const payJsSignKey = import.meta.env.VITE_PAYJS_SIGN_KEY
-export const baseYunPayUrl = import.meta.env.VITE_YUNPAY_DOMAIN
-export const yunPayMchid = import.meta.env.VITE_YUNPAY_MCHID
-export const yunPaySignKey = import.meta.env.VITE_YUNPAY_SIGN_KEY
-export const rhExeUrl = import.meta.env.VITE_LOCAL_RHEXE
-export const zPayDomain = import.meta.env.VITE_ZPAY_DOMAIN
-export const zPayMchId = import.meta.env.VITE_ZPAY_MCHID
-export const zPaySignKey = import.meta.env.VITE_ZPAY_SIGN_KEY
+// pay info - ensure these are properly configured in environment
+export const ppApisDomain = import.meta.env.VITE_PPAPI_DOMAIN || ''
+export const basePayjsUrl = import.meta.env.VITE_PAYJS_DOMAIN || ''
+export const payJsMchid = import.meta.env.VITE_PAYJS_MCHID || ''
+export const payJsSignKey = import.meta.env.VITE_PAYJS_SIGN_KEY || ''
+export const baseYunPayUrl = import.meta.env.VITE_YUNPAY_DOMAIN || ''
+export const yunPayMchid = import.meta.env.VITE_YUNPAY_MCHID || ''
+export const yunPaySignKey = import.meta.env.VITE_YUNPAY_SIGN_KEY || ''
+export const rhExeUrl = import.meta.env.VITE_LOCAL_RHEXE || ''
+export const zPayDomain = import.meta.env.VITE_ZPAY_DOMAIN || ''
+export const zPayMchId = import.meta.env.VITE_ZPAY_MCHID || ''
+export const zPaySignKey = import.meta.env.VITE_ZPAY_SIGN_KEY || ''
 
 // urlMap
 export const urlMap = {
@@ -199,7 +200,6 @@ export const chageTheme = async (theme: string) => {
 
 // support pakeplus
 export const supportPP = async () => {
-    console.log('supportPP')
     try {
         const token = localStorage.getItem('token')
         if (isTauri && token) {
@@ -347,8 +347,13 @@ export const convertToLocalTime = (utcDateTime: string) => {
 
 // get qrcode
 export const getQrcode = async (data: string) => {
-    const qrcodeUrl = await QRCode.toDataURL(data)
-    return qrcodeUrl
+    try {
+        const qrcodeUrl = await QRCode.toDataURL(data)
+        return qrcodeUrl
+    } catch (error) {
+        console.error('Failed to generate QR code:', error)
+        return null
+    }
 }
 
 // base64 encode
@@ -776,71 +781,22 @@ export const getImageSize = (base64String: any) => {
     })
 }
 
-// save image file to datadir
-// const saveImage = async (fileName: string, base64: string) => {
-//     // base64 to arraybuffer
-//     const imageArrayBuffer = base64ToArrayBuffer(base64)
-//     // save file
-//     const imageData = new Uint8Array(imageArrayBuffer)
-//     // get app data dir
-//     const appDataPath = await appDataDir()
-//     console.log('appDataPath------', appDataPath)
-//     const targetDir = await join(appDataPath, 'assets')
-//     const savePath = await join(targetDir, fileName)
-//     // confirm target dir
-//     await mkdir(targetDir, { recursive: true })
-//     // const savePath = await join(appDataPath, 'assets', fileName)
-//     // save file to app data dir
-//     await writeFile(savePath, imageData)
-//     console.log(`Image saved to: ${savePath}`)
-//     store.currentProject.icon = savePath
-//     // save image asseturl to project
-//     store.addUpdatePro({
-//         ...store.currentProject,
-//         name: store.currentProject.name,
-//         appid: store.currentProject.appid,
-//         debug: pubForm.model,
-//         icon: savePath,
-//         more: store.currentProject.more,
-//     })
-// }
-
-// update build.yml file content
-// const updateMainRs = async () => {
-//     // get CargoToml file sha
-//     const shaRes = await getFileSha(
-//         'src-tauri/src/main.rs',
-//         store.currentProject.name
-//     )
-//     console.log('get CargoToml file sha', shaRes)
-//     if (shaRes.status === 200 || shaRes.status === 404) {
-//         // get CargoToml file content
-//         const configContent: any = await invoke('update_main_rust', {
-//             appUrl: store.currentProject.url,
-//             appName: store.currentProject.showName,
-//             userAgent: platforms[store.currentProject.platform].userAgent,
-//             width: store.currentProject.width,
-//             height: store.currentProject.height,
-//         })
-//         const updateRes: any = await githubApi.updateMainRsFile(
-//             store.userInfo.login,
-//             'PakePlus',
-//             {
-//                 message: 'update main rust from pakeplus',
-//                 content: configContent,
-//                 sha: shaRes.data.sha,
-//                 branch: store.currentProject.name,
-//             }
-//         )
-//         if (updateRes.status === 200) {
-//             console.log('updateRes', updateRes)
-//         } else {
-//             console.error('updateRes error', updateRes)
-//         }
-//     } else {
-//         console.error('getFileSha error', shaRes)
-//     }
-// }
+// image url to base64
+export const imageToBase64 = async (url: string) => {
+    const img = new Image()
+    img.crossOrigin = 'Anonymous'
+    img.src = url
+    await new Promise((resolve, reject) => {
+        img.onload = resolve
+        img.onerror = () => reject(new Error('Image load failed'))
+    })
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const ctx: any = canvas.getContext('2d')
+    ctx.drawImage(img, 0, 0)
+    return canvas.toDataURL()
+}
 
 // 验证三次分支是否已经创建成功
 export const verifyBranch = async (
@@ -866,16 +822,6 @@ export const verifyBranch = async (
         }
     }
 }
-
-// get img url
-// const getImgUrl = (filePath: string) => {
-//     if (filePath) {
-//         const timestamp = new Date().getTime()
-//         return `${convertFileSrc(filePath)}?t=${timestamp}`
-//     } else {
-//         return pakePlusIcon
-//     }
-// }
 
 // check project type and creat branch
 export const createBranch = async (
@@ -1048,10 +994,28 @@ export const getRelease = async (
 
 // copy text
 export const copyText = async (text: string) => {
-    if (isTauri) {
-        await writeText(text)
-    } else {
-        navigator.clipboard.writeText(text)
+    try {
+        if (isTauri) {
+            await writeText(text)
+        } else {
+            await navigator.clipboard.writeText(text)
+        }
+        console.log('Text copied to clipboard successfully')
+    } catch (error) {
+        console.error('Failed to copy text to clipboard:', error)
+        // Fallback method for older browsers
+        try {
+            const textArea = document.createElement('textarea')
+            textArea.value = text
+            document.body.appendChild(textArea)
+            textArea.select()
+            document.execCommand('copy')
+            document.body.removeChild(textArea)
+            console.log('Text copied using fallback method')
+        } catch (fallbackError) {
+            console.error('Fallback copy method also failed:', fallbackError)
+            throw new Error('Failed to copy text to clipboard')
+        }
     }
 }
 
@@ -1417,4 +1381,14 @@ export const syncAllBranch = async (
             }
         }
     }
+}
+
+// creat device uuid
+export const creatDeviceid = () => {
+    let deviceId = localStorage.getItem('deviceId')
+    if (!deviceId) {
+        deviceId = Date.now() + ''
+        localStorage.setItem('deviceId', deviceId)
+    }
+    return deviceId
 }
